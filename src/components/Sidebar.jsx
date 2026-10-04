@@ -1,5 +1,6 @@
-import { LayoutDashboard, ArrowLeftRight, ChartPie, Settings, X, Sparkles } from 'lucide-react'
+import { LayoutDashboard, ArrowLeftRight, ChartPie, Settings, X, Sparkles, LogOut } from 'lucide-react'
 import { useApp } from '../context/AppContext'
+import { useAuth } from '../context/AuthContext'
 import { formatMoney } from '../utils/format'
 import { totals } from '../utils/stats'
 
@@ -11,7 +12,8 @@ export const NAV = [
 ]
 
 export default function Sidebar({ page, onNavigate, open, onClose }) {
-  const { transactions, settings } = useApp()
+  const { transactions, settings, user } = useApp()
+  const { signOut } = useAuth()
   const { savings } = totals(transactions)
   const balance = settings.openingBalance + savings
   const initials = settings.name
@@ -19,7 +21,7 @@ export default function Sidebar({ page, onNavigate, open, onClose }) {
     .map((p) => p[0])
     .join('')
     .slice(0, 2)
-    .toUpperCase()
+    .toUpperCase() || (user.email || '?')[0].toUpperCase()
 
   return (
     <>
@@ -68,8 +70,13 @@ export default function Sidebar({ page, onNavigate, open, onClose }) {
           <div className="avatar">{initials}</div>
           <div className="sidebar__user-text">
             <div className="user-name">{settings.name}</div>
-            <div className="user-plan">Premium plan</div>
+            <div className="user-plan" title={user.email}>
+              {user.email}
+            </div>
           </div>
+          <button className="icon-btn icon-btn--sm sidebar__signout" onClick={signOut} aria-label="Sign out" title="Sign out">
+            <LogOut size={15} />
+          </button>
         </div>
       </aside>
     </>

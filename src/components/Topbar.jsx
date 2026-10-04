@@ -1,8 +1,8 @@
-import { Menu, Plus, Sun, Moon, Bell } from 'lucide-react'
+import { Menu, Plus, Sun, Moon, Bell, LoaderCircle } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 
 export default function Topbar({ title, subtitle, onMenu }) {
-  const { settings, toggleTheme, openEditor } = useApp()
+  const { settings, toggleTheme, openEditor, saving } = useApp()
   const dark = settings.theme === 'dark'
 
   return (
@@ -15,6 +15,13 @@ export default function Topbar({ title, subtitle, onMenu }) {
         {subtitle && <p>{subtitle}</p>}
       </div>
       <div className="topbar__actions">
+        <span className={`saving-pill ${saving ? 'is-visible' : ''}`} role="status" aria-live="polite">
+          {saving && (
+            <>
+              <LoaderCircle size={14} className="spin" /> <span className="saving-pill__label">Saving…</span>
+            </>
+          )}
+        </span>
         <button className="icon-btn hide-sm" aria-label="Notifications" title="No new notifications">
           <Bell size={18} />
           <span className="dot" />

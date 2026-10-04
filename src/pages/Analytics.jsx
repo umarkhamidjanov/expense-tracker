@@ -185,7 +185,7 @@ export default function Analytics() {
                   <span className="top-list__rank">{i + 1}</span>
                   <CategoryIcon id={t.category} size="sm" />
                   <div className="top-list__main">
-                    <div className="top-list__title">{t.description || 'Expense'}</div>
+                    <div className="top-list__title">{t.name || 'Expense'}</div>
                     <div className="muted">{formatDate(t.date)}</div>
                   </div>
                   <span className="top-list__amount">{formatMoney(t.amount, cur)}</span>

@@ -16,8 +16,8 @@
     <script>
       // Apply the saved theme before first paint to avoid a flash.
       try {
-        var s = JSON.parse(localStorage.getItem('lumen.settings') || '{}')
-        if (s.theme) document.documentElement.dataset.theme = s.theme
+        var t = localStorage.getItem('lumen.theme') || (JSON.parse(localStorage.getItem('lumen.settings') || '{}').theme)
+        if (t === 'dark' || t === 'light') document.documentElement.dataset.theme = t
       } catch (e) {}
     </script>
   </head>

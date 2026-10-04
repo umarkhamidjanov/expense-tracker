@@ -25,7 +25,7 @@ export default function Transactions() {
       if (f.category !== 'all' && t.category !== f.category) return false
       if (f.month !== 'all' && monthKey(t.date) !== f.month) return false
       if (q) {
-        const hay = `${t.description} ${getCategory(t.category).name} ${t.amount}`.toLowerCase()
+        const hay = `${t.name || ''} ${t.description || ''} ${getCategory(t.category).name} ${t.amount}`.toLowerCase()
         if (!hay.includes(q)) return false
       }
       return true
@@ -47,7 +47,7 @@ export default function Transactions() {
       <section className="card toolbar fade-up">
         <div className="search">
           <Search size={18} className="search__icon" />
-          <input placeholder="Search by description, category or amount…" value={f.query} onChange={(e) => set({ query: e.target.value })} aria-label="Search transactions" />
+          <input placeholder="Search by name, note, category or amount…" value={f.query} onChange={(e) => set({ query: e.target.value })} aria-label="Search transactions" />
           {f.query && (
             <button className="search__clear" onClick={() => set({ query: '' })} aria-label="Clear search">
               <X size={15} />

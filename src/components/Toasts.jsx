@@ -8,7 +8,18 @@ export default function Toasts() {
       {toasts.map((t) => (
         <div key={t.id} className={`toast glass toast--${t.tone}`}>
           {t.tone === 'danger' ? <CircleAlert size={18} /> : <CircleCheck size={18} />}
-          <span>{t.message}</span>
+          <span className="toast__msg">{t.message}</span>
+          {t.action && (
+            <button
+              className="toast__action"
+              onClick={() => {
+                t.action.onClick()
+                dismissToast(t.id)
+              }}
+            >
+              {t.action.label}
+            </button>
+          )}
           <button className="toast__close" onClick={() => dismissToast(t.id)} aria-label="Dismiss">
             <X size={14} />
           </button>

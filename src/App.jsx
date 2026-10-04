@@ -7,6 +7,8 @@ import Dashboard from './pages/Dashboard'
 import Transactions from './pages/Transactions'
 import Analytics from './pages/Analytics'
 import Settings from './pages/Settings'
+import { useApp } from './context/AppContext'
+import { LoadError, OfflineBanner, PageSkeleton } from './components/states'
 
 const PAGES = {
   dashboard: { component: Dashboard, title: 'Dashboard', subtitle: 'Your financial overview' },
@@ -21,6 +23,7 @@ const fromHash = () => {
 }
 
 export default function App() {
+  const { status, loadError, retry } = useApp()
   const [page, setPage] = useState(fromHash)
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -74,8 +77,15 @@ export default function App() {
 
       <main className="main">
         <Topbar title={title} subtitle={subtitle} onMenu={() => setMenuOpen(true)} />
-        {/* key re-mounts the page so entrance animations replay on navigation */}
-        <Page key={page} onNavigate={navigate} />
+        <OfflineBanner />
+        {status === 'loading' ? (
+          <PageSkeleton />
+        ) : status === 'error' ? (
+          <LoadError message={loadError} onRetry={retry} />
+        ) : (
+          // key re-mounts the page so entrance animations replay on navigation
+          <Page key={page} onNavigate={navigate} />
+        )}
       </main>
 
       <nav className="bottom-nav glass" aria-label="Mobile navigation">

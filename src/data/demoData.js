@@ -23,14 +23,14 @@ const VARIABLE = [
 ]
 
 const FIXED = [
-  { category: 'housing', day: 1, amount: 1650, description: 'Monthly rent' },
-  { category: 'utilities', day: 6, amount: [92, 148], description: 'Electricity & water' },
-  { category: 'utilities', day: 9, amount: 59.99, description: 'Fiber internet' },
-  { category: 'subscriptions', day: 12, amount: 15.49, description: 'Netflix' },
-  { category: 'subscriptions', day: 14, amount: 10.99, description: 'Spotify Premium' },
-  { category: 'subscriptions', day: 18, amount: 2.99, description: 'iCloud storage' },
-  { category: 'health', day: 3, amount: 49, description: 'Gym membership' },
-  { category: 'transport', day: 20, amount: 135, description: 'Car insurance' },
+  { category: 'housing', day: 1, amount: 1650, name: 'Monthly rent' },
+  { category: 'utilities', day: 6, amount: [92, 148], name: 'Electricity & water' },
+  { category: 'utilities', day: 9, amount: 59.99, name: 'Fiber internet' },
+  { category: 'subscriptions', day: 12, amount: 15.49, name: 'Netflix' },
+  { category: 'subscriptions', day: 14, amount: 10.99, name: 'Spotify Premium' },
+  { category: 'subscriptions', day: 18, amount: 2.99, name: 'iCloud storage' },
+  { category: 'health', day: 3, amount: 49, name: 'Gym membership' },
+  { category: 'transport', day: 20, amount: 135, name: 'Car insurance' },
 ]
 
 export function generateDemoData(today = new Date()) {
@@ -54,31 +54,31 @@ export function generateDemoData(today = new Date()) {
     const daysInMonth = new Date(y, mo + 1, 0).getDate()
     const day = (d) => new Date(y, mo, Math.min(d, daysInMonth))
 
-    push(day(1), { type: 'income', category: 'salary', amount: 5400, description: 'Salary — Northwind Labs' })
-    push(day(15), { type: 'income', category: 'salary', amount: 5400, description: 'Salary — Northwind Labs' })
+    push(day(1), { type: 'income', category: 'salary', amount: 5400, name: 'Salary — Northwind Labs' })
+    push(day(15), { type: 'income', category: 'salary', amount: 5400, name: 'Salary — Northwind Labs' })
     if (rand() > 0.3)
-      push(day(int(8, 26)), { type: 'income', category: 'freelance', amount: money(between(450, 1900)), description: pick(['Brand identity project', 'Landing page build', 'UX audit for client', 'Mobile app consult']) })
+      push(day(int(8, 26)), { type: 'income', category: 'freelance', amount: money(between(450, 1900)), name: pick(['Brand identity project', 'Landing page build', 'UX audit for client', 'Mobile app consult']) })
     if (rand() > 0.5)
-      push(day(int(2, 27)), { type: 'income', category: 'investments', amount: money(between(60, 420)), description: pick(['ETF dividend', 'Stock dividend', 'Savings interest']) })
+      push(day(int(2, 27)), { type: 'income', category: 'investments', amount: money(between(60, 420)), name: pick(['ETF dividend', 'Stock dividend', 'Savings interest']) })
     if (m === 2)
-      push(day(22), { type: 'income', category: 'gifts', amount: 250, description: 'Birthday gift from family' })
+      push(day(22), { type: 'income', category: 'gifts', amount: 250, name: 'Birthday gift from family', description: 'From Grandma and Grandpa' })
 
     for (const f of FIXED) {
       const amount = Array.isArray(f.amount) ? money(between(...f.amount)) : f.amount
-      push(day(f.day), { type: 'expense', category: f.category, amount, description: f.description })
+      push(day(f.day), { type: 'expense', category: f.category, amount, name: f.name })
     }
 
     for (const v of VARIABLE) {
       const count = int(...v.perMonth)
       for (let i = 0; i < count; i++) {
-        push(day(int(1, daysInMonth)), { type: 'expense', category: v.category, amount: money(between(...v.range)), description: pick(v.labels) })
+        push(day(int(1, daysInMonth)), { type: 'expense', category: v.category, amount: money(between(...v.range)), name: pick(v.labels) })
       }
     }
 
-    if (m === 3) push(day(10), { type: 'expense', category: 'travel', amount: 742.8, description: 'Flights to Lisbon' })
-    if (m === 3) push(day(17), { type: 'expense', category: 'travel', amount: 515, description: 'Hotel — Alfama, 4 nights' })
-    if (m === 1) push(day(5), { type: 'expense', category: 'education', amount: 189, description: 'Online design course' })
-    if (m === 0) push(day(Math.max(1, today.getDate() - 2)), { type: 'expense', category: 'travel', amount: 236.4, description: 'Weekend train tickets' })
+    if (m === 3) push(day(10), { type: 'expense', category: 'travel', amount: 742.8, name: 'Flights to Lisbon', description: 'Round trip, 2 passengers' })
+    if (m === 3) push(day(17), { type: 'expense', category: 'travel', amount: 515, name: 'Hotel — Alfama, 4 nights', description: 'Booked with free cancellation' })
+    if (m === 1) push(day(5), { type: 'expense', category: 'education', amount: 189, name: 'Online design course', description: 'Advanced prototyping, lifetime access' })
+    if (m === 0) push(day(Math.max(1, today.getDate() - 2)), { type: 'expense', category: 'travel', amount: 236.4, name: 'Weekend train tickets' })
   }
 
   return txs.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : b.createdAt - a.createdAt))

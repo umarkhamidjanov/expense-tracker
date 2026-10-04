@@ -1,0 +1,14 @@
+import { useSyncExternalStore } from 'react'
+
+const subscribe = (onChange) => {
+  window.addEventListener('online', onChange)
+  window.addEventListener('offline', onChange)
+  return () => {
+    window.removeEventListener('online', onChange)
+    window.removeEventListener('offline', onChange)
+  }
+}
+
+export default function useOnlineStatus() {
+  return useSyncExternalStore(subscribe, () => navigator.onLine, () => true)
+}

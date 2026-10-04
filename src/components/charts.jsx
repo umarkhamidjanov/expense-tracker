@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { slotVar } from '../data/categories'
+import useMediaQuery from '../hooks/useMediaQuery'
 import { formatMoney } from '../utils/format'
 import ChartTooltip from './ChartTooltip'
 
@@ -12,6 +13,15 @@ const axisProps = {
   tickLine: false,
   axisLine: false,
   tick: { fill: 'var(--text-muted)', fontSize: 12 },
+}
+
+// Phones get a slimmer y-axis and edge padding so the first/last x labels
+// aren't clipped; desktop values are unchanged.
+function useAxes() {
+  const narrow = useMediaQuery('(max-width: 560px)')
+  return narrow
+    ? { axis: { ...axisProps, tick: { ...axisProps.tick, fontSize: 11 } }, yWidth: 44, edge: { left: 10, right: 14 }, right: 4 }
+    : { axis: axisProps, yWidth: 56, edge: undefined, right: 8 }
 }
 
 export function Legend({ items }) {
@@ -28,10 +38,11 @@ export function Legend({ items }) {
 }
 
 export function CashflowChart({ data, currency, height = 280 }) {
+  const { axis, yWidth, edge, right } = useAxes()
   return (
     <div className="chart-box" style={{ minHeight: height }}>
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
+        <AreaChart data={data} margin={{ top: 10, right, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="gIncome" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={INCOME} stopOpacity={0.32} />
@@ -43,8 +54,8 @@ export function CashflowChart({ data, currency, height = 280 }) {
             </linearGradient>
           </defs>
           <CartesianGrid vertical={false} stroke="var(--grid)" />
-          <XAxis dataKey="label" {...axisProps} dy={8} />
-          <YAxis {...axisProps} width={56} tickFormatter={(v) => formatMoney(v, currency, { compact: true })} />
+          <XAxis dataKey="label" {...axis} padding={edge} dy={8} />
+          <YAxis {...axis} width={yWidth} tickFormatter={(v) => formatMoney(v, currency, { compact: true })} />
           <Tooltip
             cursor={{ stroke: 'var(--axis)', strokeWidth: 1, strokeDasharray: '4 4' }}
             content={<ChartTooltip currency={currency} colors={FLOW_COLORS} />}
@@ -58,13 +69,14 @@ export function CashflowChart({ data, currency, height = 280 }) {
 }
 
 export function MonthlyBarsChart({ data, currency, height = 300, activeKey, onSelect }) {
+  const { axis, yWidth, edge, right } = useAxes()
   return (
     <div className="chart-box" style={{ minHeight: height }}>
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 10, right: 8, left: 0, bottom: 0 }} barGap={2} barCategoryGap="28%">
+        <BarChart data={data} margin={{ top: 10, right, left: 0, bottom: 0 }} barGap={2} barCategoryGap="28%">
           <CartesianGrid vertical={false} stroke="var(--grid)" />
-          <XAxis dataKey="label" {...axisProps} dy={8} />
-          <YAxis {...axisProps} width={56} tickFormatter={(v) => formatMoney(v, currency, { compact: true })} />
+          <XAxis dataKey="label" {...axis} dy={8} />
+          <YAxis {...axis} width={yWidth} tickFormatter={(v) => formatMoney(v, currency, { compact: true })} />
           <Tooltip cursor={{ fill: 'var(--hover)' }} content={<ChartTooltip currency={currency} colors={FLOW_COLORS} />} />
           {['income', 'expense'].map((k) => (
             <Bar key={k} dataKey={k} name={k === 'income' ? 'Income' : 'Expenses'} fill={FLOW_COLORS[k]} radius={[4, 4, 0, 0]} maxBarSize={22} onClick={(d) => onSelect?.(d.key ?? d.payload?.key)} style={{ cursor: onSelect ? 'pointer' : 'default' }}>
@@ -80,13 +92,14 @@ export function MonthlyBarsChart({ data, currency, height = 300, activeKey, onSe
 }
 
 export function DailyBarsChart({ data, currency, height = 240, monthName }) {
+  const { axis, yWidth, edge, right } = useAxes()
   return (
     <div style={{ width: '100%', height }}>
       <ResponsiveContainer>
         <BarChart data={data} margin={{ top: 10, right: 4, left: 0, bottom: 0 }} barCategoryGap={2}>
           <CartesianGrid vertical={false} stroke="var(--grid)" />
-          <XAxis dataKey="day" {...axisProps} interval="preserveStartEnd" minTickGap={14} dy={8} />
-          <YAxis {...axisProps} width={56} tickFormatter={(v) => formatMoney(v, currency, { compact: true })} />
+          <XAxis dataKey="day" {...axis} interval="preserveStartEnd" minTickGap={14} dy={8} />
+          <YAxis {...axis} width={yWidth} tickFormatter={(v) => formatMoney(v, currency, { compact: true })} />
           <Tooltip
             cursor={{ fill: 'var(--hover)' }}
             content={<ChartTooltip currency={currency} colors={{ expense: 'var(--series-1)' }} labelFormatter={(d) => `${monthName} ${d}`} />}

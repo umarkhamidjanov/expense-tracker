@@ -13,8 +13,14 @@ export function TransactionRow({ tx, currency, onEdit, onDelete, style }) {
     <li className="tx-row" style={style}>
       <CategoryIcon id={tx.category} />
       <div className="tx-row__main">
-        <div className="tx-row__title">{tx.description || cat.name}</div>
+        <div className="tx-row__title">{tx.name || cat.name}</div>
+        {tx.description && (
+          <div className="tx-row__note" title={tx.description}>
+            {tx.description}
+          </div>
+        )}
         <div className="tx-row__meta">
+          {tx.isSample && <span className="sample-tag">Sample</span>}
           <span>{cat.name}</span>
           <span className="sep" aria-hidden="true">•</span>
           <span>{formatDate(tx.date, 'relative')}</span>
@@ -25,10 +31,10 @@ export function TransactionRow({ tx, currency, onEdit, onDelete, style }) {
         {formatMoney(tx.amount, currency)}
       </div>
       <div className="tx-row__actions">
-        <button className="icon-btn icon-btn--sm" onClick={() => onEdit(tx)} aria-label={`Edit ${tx.description || cat.name}`} title="Edit">
+        <button className="icon-btn icon-btn--sm" onClick={() => onEdit(tx)} aria-label={`Edit ${tx.name || cat.name}`} title="Edit">
           <Pencil size={15} />
         </button>
-        <button className="icon-btn icon-btn--sm icon-btn--danger" onClick={() => onDelete(tx)} aria-label={`Delete ${tx.description || cat.name}`} title="Delete">
+        <button className="icon-btn icon-btn--sm icon-btn--danger" onClick={() => onDelete(tx)} aria-label={`Delete ${tx.name || cat.name}`} title="Delete">
           <Trash size={15} />
         </button>
       </div>
@@ -98,7 +104,7 @@ export default function TransactionList({ items, emptyTitle = 'No transactions y
       <ConfirmDialog
         open={!!pending}
         title="Delete transaction?"
-        message={pending ? `“${pending.description || getCategory(pending.category).name}” for ${formatMoney(pending.amount, settings.currency)} will be permanently removed.` : ''}
+        message={pending ? `“${pending.name || getCategory(pending.category).name}” for ${formatMoney(pending.amount, settings.currency)} will be removed. You can undo this right after.` : ''}
         confirmLabel="Delete"
         onCancel={() => setPending(null)}
         onConfirm={() => {

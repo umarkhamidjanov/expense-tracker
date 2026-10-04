@@ -1,51 +1,96 @@
-import { useEffect, useState } from 'react'
-import { TrendingUp, TrendingDown, Check } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { TrendingUp, TrendingDown, Check, Trash, TriangleAlert, CircleAlert, LoaderCircle } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 import { categoriesFor, slotVar } from '../data/categories'
 import { CURRENCIES, toISODate } from '../utils/format'
 import Modal from './Modal'
 
-const blank = () => ({ type: 'expense', amount: '', category: 'food', description: '', date: toISODate() })
+const NAME_MAX = 60
+const DESC_MAX = 200
+
+const blank = () => ({ type: 'expense', name: '', amount: '', category: 'food', description: '', date: toISODate() })
 
 export default function TransactionModal() {
-  const { editor, closeEditor, addTransaction, updateTransaction, settings } = useApp()
+  const { editor, closeEditor, addTransaction, updateTransaction, deleteTransaction, transactions, settings } = useApp()
   const editing = editor?.tx
   const [form, setForm] = useState(blank)
   const [errors, setErrors] = useState({})
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [submitError, setSubmitError] = useState(null)
 
   useEffect(() => {
     if (!editor) return
     setErrors({})
-    setForm(editing ? { ...editing, amount: String(editing.amount) } : blank())
+    setConfirmDelete(false)
+    setSaving(false)
+    setSubmitError(null)
+    setForm(
+      editing
+        ? { ...blank(), ...editing, name: editing.name ?? '', description: editing.description ?? '', amount: String(editing.amount) }
+        : blank(),
+    )
   }, [editor, editing])
 
-  const set = (patch) => setForm((f) => ({ ...f, ...patch }))
+  // Names used before for this type, most recent first, for quick re-entry.
+  const suggestions = useMemo(() => {
+    const seen = new Set()
+    for (const t of transactions) {
+      if (t.type === form.type && t.name && !seen.has(t.name)) seen.add(t.name)
+      if (seen.size >= 40) break
+    }
+    return [...seen]
+  }, [transactions, form.type])
+
+  const set = (patch) => {
+    setForm((f) => ({ ...f, ...patch }))
+    const keys = Object.keys(patch)
+    if (keys.some((k) => errors[k])) setErrors((e) => Object.fromEntries(Object.entries(e).filter(([k]) => !keys.includes(k))))
+  }
 
   const setType = (type) => {
     const cats = categoriesFor(type)
     set({ type, category: cats.some((c) => c.id === form.category) ? form.category : cats[0].id })
   }
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault()
+    if (saving) return
     const amount = Number(String(form.amount).replace(',', '.'))
+    const name = form.name.trim()
     const next = {}
     if (!form.amount || !Number.isFinite(amount) || amount <= 0) next.amount = 'Enter an amount greater than 0'
     else if (amount > 10_000_000) next.amount = 'That amount looks too large'
+    if (!name) next.name = 'Give this transaction a name'
+    else if (name.length > NAME_MAX) next.name = `Keep it under ${NAME_MAX} characters`
     if (!form.date) next.date = 'Pick a date'
-    if (form.description.length > 80) next.description = 'Keep it under 80 characters'
+    if (form.description.length > DESC_MAX) next.description = `Keep it under ${DESC_MAX} characters`
     setErrors(next)
-    if (Object.keys(next).length) return
+    if (Object.keys(next).length) {
+      // Bring the first invalid field into view (matters inside the scrolling mobile sheet).
+      requestAnimationFrame(() => document.querySelector('.tx-form [aria-invalid="true"]')?.scrollIntoView({ block: 'center', behavior: 'smooth' }))
+      return
+    }
 
     const tx = {
       type: form.type,
+      name,
       amount: Math.round(amount * 100) / 100,
       category: form.category,
-      description: form.description.trim(),
       date: form.date,
+      description: form.description.trim(),
     }
-    if (editing) updateTransaction(editing.id, tx)
-    else addTransaction(tx)
+    setSaving(true)
+    setSubmitError(null)
+    const res = editing ? await updateTransaction(editing.id, tx) : await addTransaction(tx)
+    setSaving(false)
+    // On failure keep the form open with the user's input and explain what happened.
+    if (res.ok) closeEditor()
+    else setSubmitError(res.error)
+  }
+
+  const remove = () => {
+    deleteTransaction(editing.id)
     closeEditor()
   }
 
@@ -80,9 +125,8 @@ export default function TransactionModal() {
             <input
               data-autofocus
               inputMode="decimal"
-              enterKeyHint="done"
+              enterKeyHint="next"
               autoComplete="off"
-              aria-label="Amount"
               placeholder="0.00"
               value={form.amount}
               onChange={(e) => set({ amount: e.target.value.replace(/[^\d.,]/g, '') })}
@@ -91,6 +135,42 @@ export default function TransactionModal() {
           </div>
           {errors.amount && <span className="field__error">{errors.amount}</span>}
         </label>
+
+        <div className="field-row">
+          <label className="field">
+            <span className="field__label">Name</span>
+            <input
+              name="tx-name"
+              className={`input ${errors.name ? 'has-error' : ''}`}
+              placeholder={form.type === 'income' ? 'e.g. Monthly salary' : 'e.g. Weekly groceries'}
+              value={form.name}
+              maxLength={NAME_MAX}
+              list="tx-name-suggestions"
+              enterKeyHint="next"
+              autoComplete="off"
+              aria-invalid={!!errors.name}
+              onChange={(e) => set({ name: e.target.value })}
+            />
+            <datalist id="tx-name-suggestions">
+              {suggestions.map((s) => (
+                <option key={s} value={s} />
+              ))}
+            </datalist>
+            {errors.name && <span className="field__error">{errors.name}</span>}
+          </label>
+          <label className="field field--date">
+            <span className="field__label">Date</span>
+            <input
+              type="date"
+              className={`input ${errors.date ? 'has-error' : ''}`}
+              value={form.date}
+              max="2100-12-31"
+              aria-invalid={!!errors.date}
+              onChange={(e) => set({ date: e.target.value })}
+            />
+            {errors.date && <span className="field__error">{errors.date}</span>}
+          </label>
+        </div>
 
         <div className="field">
           <span className="field__label" id="cat-label">Category</span>
@@ -123,35 +203,63 @@ export default function TransactionModal() {
           </div>
         </div>
 
-        <div className="field-row">
-          <label className="field">
-            <span className="field__label">Description</span>
-            <input
-              className={`input ${errors.description ? 'has-error' : ''}`}
-              placeholder={form.type === 'income' ? 'e.g. Monthly salary' : 'e.g. Groceries at Whole Foods'}
-              value={form.description}
-              maxLength={90}
-              enterKeyHint="done"
-              autoComplete="off"
-              onChange={(e) => set({ description: e.target.value })}
-            />
-            {errors.description && <span className="field__error">{errors.description}</span>}
-          </label>
-          <label className="field field--date">
-            <span className="field__label">Date</span>
-            <input type="date" className={`input ${errors.date ? 'has-error' : ''}`} value={form.date} max="2100-12-31" onChange={(e) => set({ date: e.target.value })} />
-            {errors.date && <span className="field__error">{errors.date}</span>}
-          </label>
-        </div>
+        <label className="field">
+          <span className="field__label field__label--split">
+            <span>
+              Description <span className="field__optional">optional</span>
+            </span>
+            <span className={`field__count ${form.description.length > DESC_MAX - 20 ? 'is-near' : ''}`}>
+              {form.description.length}/{DESC_MAX}
+            </span>
+          </span>
+          <textarea
+            className={`input textarea ${errors.description ? 'has-error' : ''}`}
+            placeholder="Add a note, e.g. who it was with or what it was for"
+            rows={2}
+            value={form.description}
+            maxLength={DESC_MAX}
+            aria-invalid={!!errors.description}
+            onChange={(e) => set({ description: e.target.value })}
+          />
+          {errors.description && <span className="field__error">{errors.description}</span>}
+        </label>
 
-        <div className="modal__foot">
-          <button type="button" className="btn btn-ghost" onClick={closeEditor}>
-            Cancel
-          </button>
-          <button type="submit" className="btn btn-primary">
-            {editing ? 'Save changes' : form.type === 'income' ? 'Add income' : 'Add expense'}
-          </button>
-        </div>
+        {submitError && (
+          <div className="form-error" role="alert">
+            <CircleAlert size={17} />
+            <span>{submitError}</span>
+          </div>
+        )}
+
+        {confirmDelete ? (
+          <div className="modal__foot modal__foot--confirm" role="alertdialog" aria-label="Confirm delete">
+            <span className="foot-confirm__text">
+              <TriangleAlert size={17} /> Delete this transaction?
+            </span>
+            <button type="button" className="btn btn-ghost" onClick={() => setConfirmDelete(false)}>
+              Keep
+            </button>
+            <button type="button" className="btn btn-danger" onClick={remove}>
+              Delete
+            </button>
+          </div>
+        ) : (
+          <div className="modal__foot">
+            {editing && (
+              <button type="button" className="btn btn-danger-ghost foot-delete" onClick={() => setConfirmDelete(true)} aria-label="Delete transaction" disabled={saving}>
+                <Trash size={16} />
+                <span className="foot-delete__label">Delete</span>
+              </button>
+            )}
+            <button type="button" className="btn btn-ghost" onClick={closeEditor} disabled={saving}>
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={saving}>
+              {saving && <LoaderCircle size={16} className="spin" />}
+              {saving ? 'Saving…' : editing ? 'Save changes' : form.type === 'income' ? 'Add income' : 'Add expense'}
+            </button>
+          </div>
+        )}
       </form>
     </Modal>
   )

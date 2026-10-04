@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { formatMoney } from '../utils/format'
 
+const prefersReducedMotion = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+
 export default function AnimatedNumber({ value, currency, duration = 900 }) {
-  const [display, setDisplay] = useState(0)
-  const current = useRef(0)
+  // With reduced motion there's no count-up, so start at the real value (no flash of 0).
+  const [display, setDisplay] = useState(() => (prefersReducedMotion() ? value : 0))
+  const current = useRef(prefersReducedMotion() ? value : 0)
 
   useEffect(() => {
-    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    const reduce = prefersReducedMotion()
     const begin = current.current
     if (reduce || begin === value) {
       current.current = value

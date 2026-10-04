@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
-import { Wallet, TrendingUp, TrendingDown, PiggyBank, ArrowRight, Target, Flame, CalendarDays } from 'lucide-react'
+import { Wallet, TrendingUp, TrendingDown, PiggyBank, ArrowRight, Target, Flame, CalendarDays, Sparkles, Plus, Database, LoaderCircle } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 import StatCard from '../components/StatCard'
 import TransactionList from '../components/TransactionList'
+import SpendingAssistant from '../components/SpendingAssistant'
 import CategoryIcon from '../components/CategoryIcon'
 import { CashflowChart, CategoryDonut, Legend, INCOME, EXPENSE } from '../components/charts'
 import { byCategory, foldForChart, inMonth, monthlySeries, samePeriodLabel, throughDay, totals } from '../utils/stats'
@@ -50,15 +51,18 @@ export default function Dashboard({ onNavigate }) {
   const isMonth = period === 'month'
   const budgetUsed = settings.monthlyBudget ? (data.tm.expense / settings.monthlyBudget) * 100 : 0
   const budgetTone = budgetUsed >= 100 ? 'over' : budgetUsed >= 85 ? 'warn' : 'ok'
+  const hasBudget = settings.monthlyBudget > 0
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
+  const firstName = settings.name.trim().split(' ')[0]
 
   return (
     <div className="page">
       <div className="page-head fade-up">
         <div>
           <h2 className="page-head__title">
-            {greeting}, {settings.name.split(' ')[0]} <span className="wave">👋</span>
+            {greeting}
+            {firstName ? `, ${firstName}` : ''} <span className="wave">👋</span>
           </h2>
           <p className="muted">Here’s what’s happening with your money{isMonth ? ` in ${monthLabel(data.thisKey, 'long')}` : ''}.</p>
         </div>
@@ -71,6 +75,8 @@ export default function Dashboard({ onNavigate }) {
           </button>
         </div>
       </div>
+
+      {!transactions.length && <WelcomeCard />}
 
       <div className="stats-grid">
         <StatCard label="Total balance" value={data.balance} currency={cur} icon={Wallet} accent="violet" change={data.balanceChange} footnote="vs. start of month" delay={0} />
@@ -106,6 +112,8 @@ export default function Dashboard({ onNavigate }) {
           delay={180}
         />
       </div>
+
+      {transactions.length > 0 && <SpendingAssistant />}
 
       <div className="grid grid--main">
         <section className="card card--chart fade-up" style={{ animationDelay: '220ms' }}>
@@ -151,15 +159,26 @@ export default function Dashboard({ onNavigate }) {
                 <h3>Monthly budget</h3>
                 <p className="muted">{data.daysLeft} days left in {monthLabel(data.thisKey, 'long').split(' ')[0]}</p>
               </div>
-              <span className={`badge badge--${budgetTone}`}>
-                <Target size={13} />
-                {budgetTone === 'over' ? 'Over budget' : budgetTone === 'warn' ? 'Near limit' : 'On track'}
-              </span>
+              {hasBudget && (
+                <span className={`badge badge--${budgetTone}`}>
+                  <Target size={13} />
+                  {budgetTone === 'over' ? 'Over budget' : budgetTone === 'warn' ? 'Near limit' : 'On track'}
+                </span>
+              )}
             </div>
             <div className="budget__figures">
               <span className="budget__spent">{formatMoney(data.tm.expense, cur)}</span>
-              <span className="muted">of {formatMoney(settings.monthlyBudget, cur)}</span>
+              <span className="muted">{hasBudget ? `of ${formatMoney(settings.monthlyBudget, cur)}` : 'spent this month'}</span>
             </div>
+            {!hasBudget ? (
+              <div className="budget__empty">
+                <span className="muted">Set a monthly budget to track your spending against it.</span>
+                <button className="btn btn-ghost btn-sm" onClick={() => onNavigate('settings')}>
+                  Set budget
+                </button>
+              </div>
+            ) : (
+              <>
             <div className="progress" role="progressbar" aria-valuenow={Math.round(budgetUsed)} aria-valuemin={0} aria-valuemax={100} aria-label="Budget used">
               <div className={`progress__bar progress__bar--${budgetTone}`} style={{ width: `${Math.min(100, budgetUsed)}%` }} />
             </div>
@@ -167,6 +186,8 @@ export default function Dashboard({ onNavigate }) {
               <span>{budgetUsed.toFixed(0)}% used</span>
               <span>{formatMoney(Math.max(0, settings.monthlyBudget - data.tm.expense), cur)} remaining</span>
             </div>
+              </>
+            )}
           </section>
 
           <section className="card insights">
@@ -204,5 +225,38 @@ export default function Dashboard({ onNavigate }) {
         </div>
       </div>
     </div>
+  )
+}
+
+function WelcomeCard() {
+  const { openEditor, loadSampleData } = useApp()
+  const [busy, setBusy] = useState(false)
+  return (
+    <section className="card welcome-card fade-up">
+      <div className="welcome-card__icon">
+        <Sparkles size={22} />
+      </div>
+      <div className="welcome-card__body">
+        <h3>Welcome to Lumen</h3>
+        <p className="muted">Your account is ready. Add your first transaction, or load sample data to explore the app. Sample transactions are labeled and can be removed any time in Settings.</p>
+      </div>
+      <div className="welcome-card__actions">
+        <button className="btn btn-primary" onClick={() => openEditor()}>
+          <Plus size={17} /> Add transaction
+        </button>
+        <button
+          className="btn btn-ghost"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true)
+            await loadSampleData()
+            setBusy(false)
+          }}
+        >
+          {busy ? <LoaderCircle size={16} className="spin" /> : <Database size={16} />}
+          {busy ? 'Loading…' : 'Load sample data'}
+        </button>
+      </div>
+    </section>
   )
 }
