@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, ArrowUpRight, ArrowDownRight, TrendingUp, Tr
 import { useApp } from '../context/AppContext'
 import { CategoryDonut, DailyBarsChart, Legend, MonthlyBarsChart, INCOME, EXPENSE } from '../components/charts'
 import CategoryIcon from '../components/CategoryIcon'
+import FitText from '../components/FitText'
 import { byCategory, dailySeries, foldForChart, inMonth, monthlySeries, samePeriodLabel, throughDay, totals } from '../utils/stats'
 import { formatDate, formatMoney, lastNMonths, monthLabel, pctChange } from '../utils/format'
 
@@ -18,7 +19,9 @@ function Kpi({ icon: Icon, label, value, change, goodWhenUp = true, sub }) {
         </span>
         <span className="muted">{label}</span>
       </div>
-      <div className="kpi__value">{value}</div>
+      <div className="kpi__value">
+        <FitText>{value}</FitText>
+      </div>
       <div className="kpi__foot">
         {has && (
           <span className={`trend ${good ? 'trend--good' : 'trend--bad'}`}>

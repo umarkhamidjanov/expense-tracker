@@ -3566,6 +3566,14 @@ input[type='date'] {
   }
 }
 
+/* Shrink-to-fit wrapper for long amounts (see FitText.jsx) */
+.fit-text {
+  display: inline-block;
+  max-width: none;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
 /* ==========================================================================
    AI Spending Assistant
    ========================================================================== */

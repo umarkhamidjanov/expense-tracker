@@ -17,10 +17,13 @@ const GENERIC_TIP = 'Look through these purchases and see which ones were essent
 // Categories people can usually cut back on (rent, utilities etc. are fixed).
 const FLEXIBLE = ['food', 'shopping', 'transport', 'entertainment', 'subscriptions', 'travel', 'other']
 
-// How much above "usual" counts as unusually high.
+// How much above "usual" counts as unusually high. The amount thresholds are in dollar-sized
+// units; UZS amounts are about 12,500× larger, so they're scaled to match.
 const HIGH_RATIO = 1.3
 const MIN_EXCESS = 25
 const NEW_CATEGORY_MIN = 50
+const AMOUNT_SCALE = { UZS: 12_500 }
+const scaleFor = (currency) => AMOUNT_SCALE[currency] || 1
 
 const KEYWORDS = {
   food: ['food', 'dining', 'restaurant', 'eat', 'grocer', 'coffee', 'delivery', 'lunch', 'dinner', 'takeout', 'takeaway'],
@@ -41,7 +44,7 @@ const catName = (id) => getCategory(id).name
 const pct = (a, b) => (b ? Math.round(((a - b) / b) * 100) : null)
 
 // Everything the insights and answers need, computed once.
-export function analyze(transactions, today = new Date()) {
+export function analyze(transactions, today = new Date(), currency = 'USD') {
   const todayISO = toISODate(today)
   const day = today.getDate()
   const [m3, m2, m1, cur] = lastNMonths(4, today)
@@ -60,7 +63,8 @@ export function analyze(transactions, today = new Date()) {
     const spent = current[id] || 0
     const base = usual[id] || 0
     const items = mtd.filter((t) => t.category === id).sort((a, b) => b.amount - a.amount)
-    const high = history.length > 0 && spent - base >= MIN_EXCESS && (base > 0 ? spent >= base * HIGH_RATIO : spent >= NEW_CATEGORY_MIN)
+    const k = scaleFor(currency)
+    const high = history.length > 0 && spent - base >= MIN_EXCESS * k && (base > 0 ? spent >= base * HIGH_RATIO : spent >= NEW_CATEGORY_MIN * k)
     return { id, name: catName(id), spent, usual: base, excess: spent - base, items, high, flexible: FLEXIBLE.includes(id) }
   })
 
@@ -91,7 +95,7 @@ const topItems = (items, cur, n = 2) =>
 
 // Short dashboard insights, most important first.
 export function getInsights(transactions, currency = 'USD', today = new Date()) {
-  const a = analyze(transactions, today)
+  const a = analyze(transactions, today, currency)
   const money = (v) => formatMoney(v, currency)
   const insights = []
 
@@ -161,7 +165,7 @@ function detectCategory(q) {
 // Answers a free-text question from the user's own transactions. Returns { text, bullets }.
 export function answerQuestion(question, transactions, currency = 'USD', today = new Date()) {
   const q = question.toLowerCase().trim()
-  const a = analyze(transactions, today)
+  const a = analyze(transactions, today, currency)
   const money = (v) => formatMoney(v, currency)
 
   if (!a.expenses.length) {

@@ -24,7 +24,7 @@ A modern personal finance dashboard built with React and Vite. Track income and 
 ## Supabase setup
 
 1. Create a project at [supabase.com](https://supabase.com/).
-2. In **SQL Editor**, run [`supabase/migrations/20261003000000_accounts.sql`](supabase/migrations/20261003000000_accounts.sql). It creates the `profiles` and `transactions` tables, enables Row Level Security with owner-only policies, and creates a profile for each new user. It is safe to run more than once.
+2. In **SQL Editor**, run [`supabase/migrations/20261003000000_accounts.sql`](supabase/migrations/20261003000000_accounts.sql). It creates the `profiles` and `transactions` tables, enables Row Level Security with owner-only policies, and creates a profile for each new user. Then run [`supabase/migrations/20261004000000_add_uzs.sql`](supabase/migrations/20261004000000_add_uzs.sql), which adds the Uzbekistani som (UZS) currency and raises the per-transaction limit for large so'm amounts. Both are safe to run more than once.
 3. In **Authentication → URL Configuration**, set **Site URL** to your production URL (e.g. `https://your-app.vercel.app`) and add `http://localhost:5173/**` (and any preview URLs you use) to **Redirect URLs**.
 4. In **Authentication → Providers → Email**, keep email sign-in enabled. "Confirm email" is recommended; set the minimum password length to 8.
 5. Copy `.env.example` to `.env.local` and fill in your project URL and **publishable** (or anon) key from **Project Settings → API**. Add the same variables in Vercel → Project → Settings → Environment Variables.

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { TrendingUp, TrendingDown, Check, Trash, TriangleAlert, CircleAlert, LoaderCircle } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 import { categoriesFor, slotVar } from '../data/categories'
-import { CURRENCIES, toISODate } from '../utils/format'
+import { currencyDecimals, currencySymbol, maxAmount, toISODate } from '../utils/format'
 import Modal from './Modal'
 
 const NAME_MAX = 60
@@ -60,7 +60,7 @@ export default function TransactionModal() {
     const name = form.name.trim()
     const next = {}
     if (!form.amount || !Number.isFinite(amount) || amount <= 0) next.amount = 'Enter an amount greater than 0'
-    else if (amount > 10_000_000) next.amount = 'That amount looks too large'
+    else if (amount > maxAmount(settings.currency)) next.amount = 'That amount looks too large'
     if (!name) next.name = 'Give this transaction a name'
     else if (name.length > NAME_MAX) next.name = `Keep it under ${NAME_MAX} characters`
     if (!form.date) next.date = 'Pick a date'
@@ -94,10 +94,7 @@ export default function TransactionModal() {
     closeEditor()
   }
 
-  const symbol = (() => {
-    const loc = CURRENCIES.find((c) => c.code === settings.currency)?.locale || 'en-US'
-    return new Intl.NumberFormat(loc, { style: 'currency', currency: settings.currency }).formatToParts(0).find((p) => p.type === 'currency')?.value
-  })()
+  const symbol = currencySymbol(settings.currency)
 
   return (
     <Modal
@@ -127,7 +124,7 @@ export default function TransactionModal() {
               inputMode="decimal"
               enterKeyHint="next"
               autoComplete="off"
-              placeholder="0.00"
+              placeholder={currencyDecimals(settings.currency) ? '0.00' : '0'}
               value={form.amount}
               onChange={(e) => set({ amount: e.target.value.replace(/[^\d.,]/g, '') })}
               aria-invalid={!!errors.amount}

@@ -6,25 +6,43 @@ export const CURRENCIES = [
   { code: 'INR', label: 'Indian Rupee', locale: 'en-IN' },
   { code: 'CAD', label: 'Canadian Dollar', locale: 'en-CA' },
   { code: 'AUD', label: 'Australian Dollar', locale: 'en-AU' },
+  // Shown by its code ("UZS 1,250,000"): browsers ship different Uzbek locale data (Chrome has
+  // none), so a fixed English format is the only way to look the same everywhere.
+  { code: 'UZS', label: 'Uzbekistani Som (soʻm)', locale: 'en-US', display: 'code' },
 ]
+
+// Currencies shown without decimals (yen has no minor unit; tiyin aren't used in practice).
+const ZERO_DECIMAL = new Set(['JPY', 'UZS'])
+export const currencyDecimals = (currency) => (ZERO_DECIMAL.has(currency) ? 0 : 2)
+
+// Largest amount a single transaction may have. UZS amounts are large (about 12,500 soʻm
+// to the dollar), so it gets a higher cap; the database column allows up to 9,999,999,999.99.
+export const maxAmount = (currency) => (currency === 'UZS' ? 9_999_999_999 : 10_000_000)
 
 const cache = new Map()
 function formatter(currency, compact) {
   const key = `${currency}|${compact}`
   if (!cache.has(key)) {
-    const locale = CURRENCIES.find((c) => c.code === currency)?.locale || 'en-US'
+    const info = CURRENCIES.find((c) => c.code === currency)
+    const locale = info?.locale || 'en-US'
     cache.set(
       key,
       new Intl.NumberFormat(locale, {
         style: 'currency',
         currency,
+        currencyDisplay: info?.display || 'symbol',
         notation: compact ? 'compact' : 'standard',
-        maximumFractionDigits: compact ? 1 : currency === 'JPY' ? 0 : 2,
-        minimumFractionDigits: compact ? 0 : currency === 'JPY' ? 0 : 2,
+        maximumFractionDigits: compact ? 1 : currencyDecimals(currency),
+        minimumFractionDigits: compact ? 0 : currencyDecimals(currency),
       }),
     )
   }
   return cache.get(key)
+}
+
+// The currency sign as the app displays it ("$", "€", "UZS"), e.g. for the amount field.
+export function currencySymbol(currency) {
+  return formatter(currency, false).formatToParts(0).find((p) => p.type === 'currency')?.value || currency
 }
 
 export function formatMoney(value, currency = 'USD', { compact = false } = {}) {

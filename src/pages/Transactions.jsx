@@ -2,6 +2,7 @@ import { useDeferredValue, useMemo, useState } from 'react'
 import { Search, X, Funnel, RotateCcw, Download } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 import TransactionList from '../components/TransactionList'
+import FitText from '../components/FitText'
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, getCategory } from '../data/categories'
 import { formatMoney, monthKey, monthLabel } from '../utils/format'
 import { totals } from '../utils/stats'
@@ -133,17 +134,26 @@ export default function Transactions() {
         </div>
         <div className="summary-chip">
           <span className="muted">Income</span>
-          <strong className="text-income">+{formatMoney(sum.income, cur)}</strong>
+          <strong className="text-income">
+            <FitText>+{formatMoney(sum.income, cur)}</FitText>
+          </strong>
         </div>
         <div className="summary-chip">
           <span className="muted">Expenses</span>
-          <strong className="text-expense">{'−'}{formatMoney(sum.expense, cur)}</strong>
+          <strong className="text-expense">
+            <FitText>
+              {'−'}
+              {formatMoney(sum.expense, cur)}
+            </FitText>
+          </strong>
         </div>
         <div className="summary-chip">
           <span className="muted">Net</span>
           <strong>
-            {sum.savings >= 0 ? '+' : '−'}
-            {formatMoney(Math.abs(sum.savings), cur)}
+            <FitText>
+              {sum.savings >= 0 ? '+' : '−'}
+              {formatMoney(Math.abs(sum.savings), cur)}
+            </FitText>
           </strong>
         </div>
       </div>

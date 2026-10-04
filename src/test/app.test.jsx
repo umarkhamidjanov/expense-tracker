@@ -223,6 +223,61 @@ describe('Navigation, search and settings', () => {
     expect(repo.profileFor(ALICE.id)).not.toHaveProperty('theme')
   })
 
+  it('supports Uzbekistani som across adding, editing, Dashboard, Analytics and the AI assistant', async () => {
+    const { user, repo } = await renderWithData()
+    const plain = (el) => el.textContent.replace(/\s/g, ' ')
+    await user.click(within(mobileNav()).getByRole('button', { name: 'Settings' }))
+    const select = screen.getByRole('combobox', { name: 'Currency' })
+    expect(within(select).getByRole('option', { name: 'UZS — Uzbekistani Som (soʻm)' })).toBeTruthy()
+    await user.selectOptions(select, 'UZS')
+    await waitFor(() => expect(repo.profileFor(ALICE.id).currency).toBe('UZS'))
+
+    // Add a large so'm expense (above the 10,000,000 cap that applies to other currencies).
+    await user.click(within(mobileNav()).getByRole('button', { name: 'Dashboard' }))
+    await user.click(screen.getByRole('button', { name: 'Add transaction' }))
+    let d = dialog()
+    expect(d.querySelector('.amount-input__symbol').textContent).toBe('UZS')
+    await user.type(within(d).getByPlaceholderText('0'), '12500000')
+    await user.type(within(d).getByPlaceholderText(/^e\.g\./), 'Monthly rent UZ')
+    await user.click(within(d).getByRole('radio', { name: 'Housing' }))
+    await user.click(within(d).getByRole('button', { name: 'Add expense' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(repo.rowsFor(ALICE.id).find((t) => t.name === 'Monthly rent UZ').amount).toBe(12_500_000)
+    const row = screen.getByText('Monthly rent UZ').closest('.tx-row')
+    expect(plain(row.querySelector('.tx-row__amount'))).toBe('−UZS 12,500,000')
+
+    // Edit it.
+    await user.click(screen.getByRole('button', { name: 'Edit Monthly rent UZ' }))
+    d = dialog()
+    const amount = within(d).getByPlaceholderText('0')
+    await user.clear(amount)
+    await user.type(amount, '9800000')
+    await user.click(within(d).getByRole('button', { name: 'Save changes' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(repo.rowsFor(ALICE.id).find((t) => t.name === 'Monthly rent UZ').amount).toBe(9_800_000)
+
+    // Dashboard figures and the AI assistant use so'm.
+    const balance = screen.getByText('Total balance', { selector: '.stat-card__label' }).closest('.stat-card')
+    expect(plain(balance)).toMatch(/UZS \d/)
+    expect(plain(screen.getByRole('region', { name: /AI Spending Assistant/ }))).toMatch(/UZS \d/)
+    expect(document.body.textContent).not.toMatch(/\$\d/)
+
+    // Analytics too.
+    await user.click(within(mobileNav()).getByRole('button', { name: 'Analytics' }))
+    expect(plain(document.querySelector('.kpi__value'))).toMatch(/^UZS \d/)
+    expect(document.body.textContent).not.toMatch(/\$\d/)
+  })
+
+  it('still caps other currencies at 10,000,000 per transaction', async () => {
+    const { user } = await renderWithData()
+    await user.click(screen.getByRole('button', { name: 'Add transaction' }))
+    const d = dialog()
+    await user.type(within(d).getByPlaceholderText('0.00'), '12500000')
+    await user.type(within(d).getByPlaceholderText(/^e\.g\./), 'Too big')
+    await user.click(within(d).getByRole('button', { name: 'Add expense' }))
+    expect(within(d).getByText('That amount looks too large')).toBeTruthy()
+  })
+
   it('saves the currency to the account and re-formats amounts immediately', async () => {
     const { user, repo } = await renderWithData()
     await user.click(within(mobileNav()).getByRole('button', { name: 'Settings' }))

@@ -117,3 +117,29 @@ describe('answerQuestion', () => {
     expect(answerQuestion('Where can I save money?', [], 'USD', TODAY).text).toMatch(/don’t see any expenses yet/)
   })
 })
+
+describe('Uzbekistani som (UZS)', () => {
+  const plain = (s) => s.replace(/\s/g, ' ')
+  // The same pattern as above in so'm (about 12,500 per dollar).
+  const inUzs = data.map((t) => ({ ...t, amount: t.amount * 12_500 }))
+
+  it('flags the same unusual categories, formatted in UZS', () => {
+    const insights = getInsights(inUzs, 'UZS', TODAY)
+    expect(insights.map((i) => i.category || i.id)).toEqual(getInsights(data, 'USD', TODAY).map((i) => i.category || i.id))
+    expect(plain(insights.find((i) => i.category === 'food').text)).toContain('UZS 1,687,500 so far (Oct 1–4), 6.8× your usual UZS 250,000 for these days')
+  })
+
+  it('does not flag changes that are tiny in real terms', () => {
+    const steady = [...history, tx('2026-10-01', 'housing', 1500, 'Rent'), tx('2026-10-02', 'food', 22, 'Groceries'), tx('2026-10-03', 'transport', 15, 'Metro')].map((t) => ({ ...t, amount: t.amount * 12_500 }))
+    // Food: 340,000 vs a usual 250,000 so'm is 1.36x, but only +90,000 so'm (about $7).
+    steady.push(tx('2026-10-04', 'food', 65_000, 'Snack'))
+    // A brand-new category of 30,000 so'm (about $2.40).
+    steady.push(tx('2026-10-04', 'entertainment', 30_000, 'Cinema'))
+    const flagged = getInsights(steady, 'UZS', TODAY).map((i) => i.category).filter(Boolean)
+    expect(flagged).toEqual([])
+  })
+
+  it('answers questions in UZS', () => {
+    expect(plain(answerQuestion('What did I spend the most on?', inUzs, 'UZS', TODAY).bullets[0])).toBe('1. Housing: UZS 18,750,000 (81%)')
+  })
+})

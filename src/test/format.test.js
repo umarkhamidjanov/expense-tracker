@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { formatDate, formatMoney, lastNMonths, monthKey, monthLabel, parseISODate, pctChange, toISODate } from '../utils/format'
+import { CURRENCIES, currencyDecimals, currencySymbol, formatDate, formatMoney, lastNMonths, maxAmount, monthKey, monthLabel, parseISODate, pctChange, toISODate } from '../utils/format'
 
 afterEach(() => vi.useRealTimers())
 
@@ -13,6 +13,18 @@ describe('formatMoney', () => {
   })
   it('supports compact notation for chart axes', () => {
     expect(formatMoney(10500, 'USD', { compact: true })).toBe('$10.5K')
+  })
+  it('formats Uzbekistani som by its code, with no decimals', () => {
+    const plain = (s) => s.replace(/\s/g, ' ')
+    expect(plain(formatMoney(1234567.5, 'UZS'))).toBe('UZS 1,234,568')
+    expect(plain(formatMoney(12500000, 'UZS', { compact: true }))).toBe('UZS 12.5M')
+    expect(currencySymbol('UZS')).toBe('UZS')
+    expect(currencySymbol('USD')).toBe('$')
+    expect(currencyDecimals('UZS')).toBe(0)
+    expect(currencyDecimals('USD')).toBe(2)
+    expect(maxAmount('UZS')).toBe(9_999_999_999)
+    expect(maxAmount('USD')).toBe(10_000_000)
+    expect(CURRENCIES.map((c) => c.code)).toEqual(['USD', 'EUR', 'GBP', 'JPY', 'INR', 'CAD', 'AUD', 'UZS'])
   })
   it('treats missing values as zero', () => {
     expect(formatMoney(undefined, 'USD')).toBe('$0.00')

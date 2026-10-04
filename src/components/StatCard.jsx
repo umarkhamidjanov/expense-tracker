@@ -1,5 +1,6 @@
 import { ArrowUpRight, ArrowDownRight } from 'lucide-react'
 import AnimatedNumber from './AnimatedNumber'
+import FitText from './FitText'
 
 /**
  * `goodWhenUp` decides whether an increase is shown as positive (income) or
@@ -20,7 +21,9 @@ export default function StatCard({ label, value, currency, icon: Icon, accent, c
         </span>
       </div>
       <div className="stat-card__value">
-        <AnimatedNumber value={value} currency={currency} />
+        <FitText>
+          <AnimatedNumber value={value} currency={currency} />
+        </FitText>
       </div>
       <div className="stat-card__foot">
         {hasChange ? (
