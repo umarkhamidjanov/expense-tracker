@@ -3741,6 +3741,16 @@ input[type='date'] {
   background: linear-gradient(135deg, #8b7cf6, #6d5ef0);
 }
 
+.chat-msg__bubble p {
+  white-space: pre-line; /* keep line breaks in AI replies */
+}
+
+.chat-msg__note {
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
 .chat-msg__bubble ul {
   margin: 6px 0 0;
   padding-left: 18px;

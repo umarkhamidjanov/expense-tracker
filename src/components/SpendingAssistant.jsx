@@ -1,12 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Bot, Send, Sparkles, TriangleAlert, CircleCheck, Lightbulb, MessageCircle, X } from 'lucide-react'
 import { useApp } from '../context/AppContext'
-import { answerQuestion, getInsights, SUGGESTED_QUESTIONS } from '../utils/assistant'
+import { useAuth } from '../context/AuthContext'
+import { answerQuestion, buildSpendingSummary, getInsights, SUGGESTED_QUESTIONS } from '../utils/assistant'
 
 const TONE_ICON = { warn: TriangleAlert, good: CircleCheck, info: Lightbulb }
+const MAX_MESSAGE_CHARS = 500 // matches the server route's limit
 
 export default function SpendingAssistant() {
   const { transactions, settings } = useApp()
+  const { session } = useAuth()
+  const mounted = useRef(true)
+  useEffect(() => () => (mounted.current = false), [])
   const insights = useMemo(() => getInsights(transactions, settings.currency).slice(0, 4), [transactions, settings.currency])
   const [chatOpen, setChatOpen] = useState(false)
   const [messages, setMessages] = useState([])
@@ -23,6 +28,7 @@ export default function SpendingAssistant() {
     if (el) el.scrollTop = el.scrollHeight
   }, [messages, thinking])
 
+  // The three suggested questions get instant answers computed in the browser.
   const ask = (question) => {
     const q = question.trim()
     if (!q || thinking) return
@@ -34,6 +40,40 @@ export default function SpendingAssistant() {
       setMessages((m) => [...m, { role: 'assistant', ...answerQuestion(q, transactions, settings.currency) }])
       setThinking(false)
     }, 450)
+  }
+
+  // Typed messages go to the AI (server route /api/chat, powered by Gemini). If it's
+  // unavailable, fall back to the same instant local answer the suggested questions use.
+  const askAI = async (question) => {
+    const q = question.trim().slice(0, MAX_MESSAGE_CHARS)
+    if (!q || thinking) return
+    const history = messages.map((m) => ({ role: m.role, text: [m.text, ...(m.bullets || [])].join('\n') }))
+    setMessages((m) => [...m, { role: 'user', text: q }])
+    setDraft('')
+    setThinking(true)
+    let reply = null
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` },
+        body: JSON.stringify({
+          message: q,
+          history,
+          summary: buildSpendingSummary(transactions, settings.currency, new Date(), settings.monthlyBudget),
+        }),
+      })
+      if (res.ok) reply = (await res.json()).reply
+    } catch {
+      reply = null
+    }
+    if (!mounted.current) return
+    setMessages((m) => [
+      ...m,
+      reply
+        ? { role: 'assistant', text: reply }
+        : { role: 'assistant', ...answerQuestion(q, transactions, settings.currency), note: 'The AI is unavailable right now, so here’s a quick answer from your data instead.' },
+    ])
+    setThinking(false)
   }
 
   const openChat = () => {
@@ -100,6 +140,7 @@ export default function SpendingAssistant() {
                   </span>
                 )}
                 <div className="chat-msg__bubble">
+                  {m.note && <p className="chat-msg__note">{m.note}</p>}
                   <p>{m.text}</p>
                   {m.bullets?.length > 0 && (
                     <ul>
@@ -137,7 +178,7 @@ export default function SpendingAssistant() {
             className="assistant-chat__form"
             onSubmit={(e) => {
               e.preventDefault()
-              ask(draft)
+              askAI(draft)
             }}
           >
             <input

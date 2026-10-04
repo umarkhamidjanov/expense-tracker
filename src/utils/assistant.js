@@ -153,7 +153,36 @@ export function getInsights(transactions, currency = 'USD', today = new Date()) 
   return insights
 }
 
-export const SUGGESTED_QUESTIONS = ['Where can I save money?', 'What did I spend the most on?', 'Why are my expenses high this month?']
+// Compact plain-text summary of the user's spending, sent with typed chat messages so the
+// AI can answer from real numbers without receiving every transaction.
+export function buildSpendingSummary(transactions, currency = 'USD', today = new Date(), monthlyBudget = 0) {
+  const a = analyze(transactions, today, currency)
+  if (!a.expenses.length) return 'The user has not recorded any expenses yet.'
+  const money = (v) => formatMoney(v, currency)
+  const lines = [
+    `Currency: ${currency}. Today: ${toISODate(today)}. Period so far: ${period(a)}.`,
+    `Spent so far this month: ${money(a.mtdTotal)}. Income this month: ${money(a.monthIncome)}.`,
+    `Spent over the same days last month: ${money(a.lastSameTotal)}. Total spent last month (${monthLabel(a.prev, 'long')}): ${money(a.lastFullTotal)}.`,
+  ]
+  if (monthlyBudget > 0) lines.push(`Monthly budget: ${money(monthlyBudget)}.`)
+  const cats = a.categories.filter((c) => c.spent > 0 || c.usual > 0).slice(0, 10)
+  if (cats.length) {
+    lines.push('', `By category this month, compared with the usual amount for the first ${a.day} days (average of recent months):`)
+    for (const c of cats) lines.push(`- ${c.name}: ${money(c.spent)} (usual ${money(c.usual)})${c.high ? ' - unusually high' : ''}`)
+  }
+  const top = [...a.mtd].sort((x, y) => y.amount - x.amount).slice(0, 8)
+  if (top.length) {
+    lines.push('', 'Largest expenses this month:')
+    for (const t of top) lines.push(`- ${t.date} ${t.name} (${catName(t.category)}): ${money(t.amount)}`)
+  }
+  const lastMonth = Object.entries(byCat(a.expenses.filter((t) => t.date.startsWith(a.prev))))
+    .sort((x, y) => y[1] - x[1])
+    .slice(0, 6)
+  if (lastMonth.length) lines.push('', `Last month by category: ${lastMonth.map(([id, v]) => `${catName(id)} ${money(v)}`).join(', ')}.`)
+  return lines.join('\n')
+}
+
+export const SUGGESTED_QUESTIONS =['Where can I save money?', 'What did I spend the most on?', 'Why are my expenses high this month?']
 
 // Keywords match whole words plus common endings ("restaurants", "groceries", "shopping"),
 // never part of another word (so "weather" isn't "eat" and "card" isn't "car").

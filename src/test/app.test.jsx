@@ -70,6 +70,49 @@ describe('AI Spending Assistant', () => {
     expect(await within(card).findByText(/on Food & Dining so far this month/, {}, { timeout: 2000 })).toBeTruthy()
   })
 
+  it('sends typed messages to the AI with the user’s session and spending summary', async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ reply: 'Hi Alice! Housing is your biggest cost.\n- Review subscriptions monthly' }), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const { user } = await renderWithData()
+    const card = screen.getByRole('region', { name: /AI Spending Assistant/ })
+    await user.click(within(card).getByRole('button', { name: /Ask AI/ }))
+
+    // The suggested questions still answer instantly, locally, without calling the server.
+    await user.click(within(card).getByRole('button', { name: 'What did I spend the most on?' }))
+    expect(await within(card).findByText(/your biggest category is/, {}, { timeout: 2000 })).toBeTruthy()
+    expect(fetchMock).not.toHaveBeenCalled()
+
+    await user.type(within(card).getByRole('textbox', { name: /Ask a question/ }), 'Hi, how are you?')
+    await user.click(within(card).getByRole('button', { name: 'Send' }))
+    expect(await within(card).findByText(/Hi Alice! Housing is your biggest cost/)).toBeTruthy()
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('/api/chat')
+    expect(init.headers.Authorization).toBe(`Bearer token-${ALICE.id}`)
+    const body = JSON.parse(init.body)
+    expect(body.message).toBe('Hi, how are you?')
+    expect(body.summary).toContain('Currency: USD')
+    expect(body.summary).toContain('By category this month')
+    expect(body.summary).toContain('Monthly budget: $4,200.00')
+    // Earlier messages (including the instant answer) go along as context.
+    expect(body.history.map((m) => m.role)).toEqual(['user', 'assistant'])
+    expect(body.history[1].text).toContain('your biggest category is')
+    vi.unstubAllGlobals()
+  })
+
+  it('falls back to the local answer when the AI is unavailable', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ error: 'not_configured' }), { status: 503 })))
+    const { user } = await renderWithData()
+    const card = screen.getByRole('region', { name: /AI Spending Assistant/ })
+    await user.click(within(card).getByRole('button', { name: /Ask AI/ }))
+    await user.type(within(card).getByRole('textbox', { name: /Ask a question/ }), 'How much did I spend on food?')
+    await user.click(within(card).getByRole('button', { name: 'Send' }))
+    expect(await within(card).findByText(/The AI is unavailable right now/)).toBeTruthy()
+    expect(within(card).getByText(/on Food & Dining so far this month/)).toBeTruthy()
+    vi.unstubAllGlobals()
+  })
+
   it('is hidden for an empty account', async () => {
     renderRoot({ transactions: [] })
     await waitForDashboard()

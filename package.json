@@ -11,6 +11,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@google/genai": "^2.27.0",
     "@supabase/supabase-js": "^2.117.2",
     "lucide-react": "^1.51.0",
     "react": "^19.3.0",

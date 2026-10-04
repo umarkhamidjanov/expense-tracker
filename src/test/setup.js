@@ -1,27 +1,32 @@
 import { afterEach, beforeEach, vi } from 'vitest'
 import { cleanup } from '@testing-library/react'
 
-// jsdom lacks these browser APIs.
-// Reporting prefers-reduced-motion makes animated numbers settle instantly.
-window.matchMedia = (query) => ({
-  matches: query.includes('prefers-reduced-motion'),
-  media: query,
-  onchange: null,
-  addEventListener: () => {},
-  removeEventListener: () => {},
-  addListener: () => {},
-  removeListener: () => {},
-  dispatchEvent: () => false,
-})
+// Server-side tests (e.g. the /api route) run in plain Node with no browser window.
+const isBrowser = typeof window !== 'undefined'
 
-globalThis.ResizeObserver = class {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
+if (isBrowser) {
+  // jsdom lacks these browser APIs.
+  // Reporting prefers-reduced-motion makes animated numbers settle instantly.
+  window.matchMedia = (query) => ({
+    matches: query.includes('prefers-reduced-motion'),
+    media: query,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  })
+
+  globalThis.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+
+  window.scrollTo = () => {}
+  Element.prototype.scrollIntoView = () => {}
 }
-
-window.scrollTo = () => {}
-Element.prototype.scrollIntoView = () => {}
 
 // Charts can't measure a size in jsdom; ignore Recharts' resulting size warning only.
 const warn = console.warn
@@ -33,6 +38,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  if (!isBrowser) return
   cleanup()
   localStorage.clear()
   window.location.hash = ''
